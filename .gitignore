@@ -1,5 +1,2 @@
-log/*.log
-config/dataConfig/*
 .idea/
-proto/*.go
 

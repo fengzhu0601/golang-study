@@ -1,7 +1,8 @@
 package main
 
+import "fengzhu/golang-study/import_cycles/a"
+
 func main(){
-	println("hello world!!!")
-	//o := a.NewA()
-	//o.PrintA()
+	o := a.NewA()
+	o.PrintA()
 }
