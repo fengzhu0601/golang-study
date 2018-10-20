@@ -1,8 +1,7 @@
 package main
 
-import "fengzhu/golang-study/import_cycles/a"
+import "fengzhu/golang-study/import_cycles/c"
 
 func main(){
-	o := a.NewA()
-	o.PrintA()
+	c.PrintC()
 }

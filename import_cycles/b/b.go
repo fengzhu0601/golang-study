@@ -2,7 +2,7 @@ package b
 
 import (
 	"fmt"
-	"fengzhu/golang-study/import_cycles/a"
+	"fengzhu/golang-study/import_cycles/i"
 )
 
 type B struct {
@@ -18,7 +18,6 @@ func NewB() *B{
 	return b
 }
 
-func RequireA() {
-	o := a.NewA()
+func RequireA(o i.Aprinter) {
 	o.PrintA()
 }
