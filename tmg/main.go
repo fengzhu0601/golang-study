@@ -1,16 +1,33 @@
-package tmg
+package main
+
+import "fmt"
 
 const (
 	BestLuckyContribution = 3348	// 贡献值
 	BestLuckyCostPoints = 0.3		// 积分
-	Regday	= 75	// 注册天数
+
+	perContribution int32 = 5
+	Contribution2Points = 2500     // 贡献值转换成积分的比例 2500：1
+
+	OverDay = 90			// 计算结束天数
+	EndLuckDay = 90		// 结束抽奖天数
 )
 
-func GetEveryDayContribution(curContr int32) (dayContr int32){
+// 每天能正常获取的贡献值
+func GetEveryDayContribution(curContr, loginId int32) (dayContr int32){
+	// 签到贡献
+	loginContr := GetLoginContribution(loginId)
+	// 阅读贡献
+	readContrPer := GetReadContributionPer(curContr)
+	readContr := readContrPer * 12 * perContribution
+	// 分享贡献
+	shareContr := perContribution*10+ perContribution*20
 
+	dayContr = loginContr + readContr + shareContr
 	return
 }
 
+// 每天的释放比例
 func GetEveryDayReleasePer(regday int32) (per float32){
 	if regday <= 30 {
 		per = 0.0030
@@ -60,6 +77,149 @@ func GetEveryDayReleasePer(regday int32) (per float32){
 	return
 }
 
-func main()  {
+func GetReadContributionPer( curContr int32)(per int32){
+	if curContr < 60000{
+		per = 48
+	}else if curContr >= 60000 && curContr < 120000{
+		per = 44
+	}else if curContr >= 120000 && curContr < 180000{
+		per = 40
+	}else if curContr >= 180000 && curContr < 240000{
+		per = 36
+	}else if curContr >= 240000 && curContr < 300000{
+		per = 32
+	}else if curContr >= 300000 && curContr < 360000{
+		per = 28
+	}else if curContr >= 360000 && curContr < 420000 {
+		per = 24
+	}else if curContr >= 420000 && curContr < 480000{
+		per = 20
+	}else if curContr >= 480000 && curContr < 540000{
+		per = 16
+	}else if curContr >= 540000 && curContr < 600000{
+		per = 12
+	}else if curContr >= 600000 && curContr < 660000{
+		per = 8
+	}else if curContr >= 660000 && curContr < 720000{
+		per = 4
+	}else {
+		per = 1
+	}
+	return
+}
 
+// 签到获取的贡献值
+func GetLoginContribution(loginId int32) (result int32){
+	switch loginId {
+	case 1:
+		result = 6
+	case 2:
+		result = 12
+	case 3:
+		result = 18
+	case 4:
+		result = 24
+	case 5:
+		result = 30
+	case 6:
+		result = 36
+	case 7:
+		result = 688
+	}
+	// 双倍
+	result *= 2
+	return
+}
+// 获取下一个签到序号
+func GetNextLoginId(loginId int32) int32{
+	if loginId >= 7{
+		return 1
+	}
+	return loginId+1
+}
+
+func ContributionToPoints(contr int32) float32{
+	return  float32(contr/ Contribution2Points)
+}
+
+func main()  {
+	curContribution := int32(437905-154688)//int32(437905)
+	loginId := int32(5)//int32(6)
+	regDay	:= int32(74) // int32(75)	// 注册天数
+	lockedPoint := float32(105.19) // float32(175.6778 - 0.3514)
+	usedPoint := float32(10.87)//float32(0.22)
+	oldPoint := float32(2.83)
+
+	fmt.Println("不使用转盘抽奖 =====")
+	noUseBestLuck(curContribution, loginId, regDay, lockedPoint, usedPoint, oldPoint)
+	fmt.Println("使用转盘抽奖 =====")
+	useBestLuck(curContribution, loginId, regDay, lockedPoint, usedPoint, oldPoint)
+}
+
+func noUseBestLuck(curContribution, loginId, regDay int32, lockedPoint, usedPoint, oldPoint float32){
+	var releaseContribution float32
+	for regDay <= OverDay{
+		// 今天获取的贡献值
+		todayContribution := GetEveryDayContribution(curContribution, loginId)
+		lockedPoint = lockedPoint + ContributionToPoints(todayContribution)
+		// 释放
+		releasePer := GetEveryDayReleasePer(regDay)
+		releaseContribution = lockedPoint * releasePer
+
+		lockedPoint = lockedPoint - releaseContribution
+		usedPoint = usedPoint + releaseContribution * 0.8
+		oldPoint = oldPoint + releaseContribution * 0.2
+
+		curContribution += todayContribution
+		regDay += 1
+		loginId = GetNextLoginId(loginId)
+	}
+	fmt.Printf("锁仓绩效积分 = %f\n" +
+		"可用绩效积分 = %f \n" +
+		"养老绩效积分 = %f \n" +
+		"注册天数 = %d \n" +
+		"当前贡献值 = %d " +
+		"每天释放值 = %f\n", lockedPoint, usedPoint, oldPoint, regDay, curContribution, releaseContribution)
+}
+
+func GetBestLuckContribution(regDay int32, usePoint float32) (float32, int32){
+	var contri int32
+	if regDay <= EndLuckDay {
+		for usePoint >= BestLuckyCostPoints {
+			usePoint -= BestLuckyCostPoints
+			contri += BestLuckyContribution
+		}
+	}
+	return usePoint, contri
+}
+
+func useBestLuck(curContribution, loginId, regDay int32, lockedPoint, usedPoint, oldPoint float32){
+	var releaseContribution float32
+	for regDay <= OverDay{
+		// 先抽奖
+		var bestLock int32
+		usedPoint, bestLock = GetBestLuckContribution(regDay, usedPoint)
+		// 今天获取的贡献值
+		todayContribution := GetEveryDayContribution(curContribution, loginId) + bestLock
+
+
+		lockedPoint = lockedPoint + ContributionToPoints(todayContribution)
+		// 释放
+		releasePer := GetEveryDayReleasePer(regDay)
+		releaseContribution = lockedPoint * releasePer
+
+		lockedPoint = lockedPoint - releaseContribution
+		usedPoint = usedPoint + releaseContribution * 0.8
+		oldPoint = oldPoint + releaseContribution * 0.2
+
+		curContribution += todayContribution
+		regDay += 1
+		loginId = GetNextLoginId(loginId)
+	}
+	fmt.Printf("锁仓绩效积分 = %f\n" +
+		"可用绩效积分 = %f \n" +
+		"养老绩效积分 = %f \n" +
+		"注册天数 = %d \n" +
+		"当前贡献值 = %d " +
+		"每天释放值 = %f\n", lockedPoint, usedPoint, oldPoint, regDay, curContribution, releaseContribution)
 }
