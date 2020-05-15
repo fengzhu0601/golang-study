@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
 const (
@@ -10,10 +9,10 @@ const (
 	BestLuckyCostPoints = 0.3		// 积分
 
 	perContribution int32 = 5
-	Contribution2Points = 2500     // 贡献值转换成积分的比例 2500：1
+	Contribution2Points = 2300     // 贡献值转换成积分的比例 2500：1
 
-	OverDay = 77			// 计算结束天数
-	EndLuckDay = 90		// 结束抽奖天数
+	OverDay = 365			// 计算结束天数
+	EndLuckDay = 75		// 结束抽奖天数
 )
 
 // 当前贡献值
@@ -29,20 +28,46 @@ const UsablePoint float32 = 0.52
 // 养老绩效积分
 const OldPoint float32 = 2.91
 
+
+type  TmgInfo struct {
+	CurrentContribution int32	//当前贡献值
+	LoginId				int32	// 登陆第几天
+	RegisterDay 		int32	// 注册天数
+	LockedPoint 		float32 // 锁仓绩效积分
+	UsablePoint 		float32 // 可用绩效积分
+	OldPoint			float32 // 养老绩效积分
+}
+
+func CreateTmgInfo() *TmgInfo{
+	return &TmgInfo{
+		CurrentContribution:CurContribution,
+		LoginId:LoginId,
+		RegisterDay:RegisterDay,
+		LockedPoint:LockedPoint,
+		UsablePoint:UsablePoint,
+		OldPoint:OldPoint,
+	}
+}
+
 // 每天能正常获取的贡献值
 func GetEveryDayContribution(curContr, loginId int32) (dayContr int32){
 	// 签到贡献
 	loginContr := GetLoginContribution(loginId)
-	fmt.Println("签到贡献 = ", loginContr)
+	//fmt.Println("签到贡献 = ", loginContr)
 	// 阅读贡献
 	readContrPer := GetReadContributionPer(curContr)
-	readContr := readContrPer * 12 * perContribution + perContribution*5*12*2
-	fmt.Println("阅读贡献 = ", readContr)
+	//fmt.Println("倍数 = ",readContrPer)
+	readContr := readContrPer * 12 * perContribution + perContribution*12
+	//fmt.Println("阅读贡献 = ", readContr)
 	// 分享贡献
-	shareContr := perContribution*10+ perContribution*20
-	fmt.Println("分享贡献 = ", shareContr)
+	shareContr := perContribution*10
+	//fmt.Println("分享贡献 = ", shareContr)
+	// 广告贡献值
+	adContr := 32*perContribution
+	//fmt.Println("广告贡献 = ", adContr)
 
-	dayContr = loginContr + readContr + shareContr
+
+	dayContr = loginContr + readContr + shareContr+adContr
 	return
 }
 
@@ -158,103 +183,114 @@ func GetNextLoginId(loginId int32) int32{
 }
 
 func ContributionToPoints(contr int32) float32{
-	return  float32(contr/ Contribution2Points)
+	return  float32(contr)/ Contribution2Points
 }
 
 func main()  {
-	fileNameClient := "./tmg.csv"
-	os.Remove(fileNameClient)
-	fileClient, err := os.OpenFile(fileNameClient, os.O_CREATE|os.O_RDWR, os.ModePerm)
-	if err != nil {
-		panic("file not exsit! %!s(MISSING)")
-	}
-	defer fileClient.Close()
 
-	for _, areaId := range areaList {
-		birthGroupList := GenBirthPoint(areaId)
-		//l := RandBirthPointList(core, areaId, birthPointMap)
-		fmt.Fprintf(fileServer, "%d", areaId)
-		for _, birthGroup := range birthGroupList {
-			fmt.Fprintf(fileServer, "|%d,%d", birthGroup.GroupId, birthGroup.Circle)
-			for _, i := range birthGroup.Indexes {
-				fmt.Fprintf(fileClient, "%d,", i)
-				fmt.Fprintf(fileServer, ",%d", i)
+	//fileNameClient := "./tmg.csv"
+	//os.Remove(fileNameClient)
+	//fileClient, err := os.OpenFile(fileNameClient, os.O_CREATE|os.O_RDWR, os.ModePerm)
+	//if err != nil {
+	//	panic("file not exsit! %!s(MISSING)")
+	//}
+	//defer fileClient.Close()
+	//
+	//for _, areaId := range areaList {
+	//	birthGroupList := GenBirthPoint(areaId)
+	//	//l := RandBirthPointList(core, areaId, birthPointMap)
+	//	fmt.Fprintf(fileServer, "%d", areaId)
+	//	for _, birthGroup := range birthGroupList {
+	//		fmt.Fprintf(fileServer, "|%d,%d", birthGroup.GroupId, birthGroup.Circle)
+	//		for _, i := range birthGroup.Indexes {
+	//			fmt.Fprintf(fileClient, "%d,", i)
+	//			fmt.Fprintf(fileServer, ",%d", i)
+	//		}
+	//	}
+	//	fmt.Fprintf(fileServer, "\n")
+	//}
+	tmgInfo := CreateTmgInfo()
+	fmt.Println("不使用转盘抽奖 =====")
+	noUseBestLuck(tmgInfo)
+
+	tmgInfo2 := CreateTmgInfo()
+	fmt.Println("使用转盘抽奖 =====")
+	useBestLuck(tmgInfo2)
+}
+
+func noUseBestLuck(tmgInfo *TmgInfo){
+	var releaseContribution float32
+	for tmgInfo.RegisterDay < OverDay{
+		// 今天获取的贡献值
+		todayContribution := GetEveryDayContribution(tmgInfo.CurrentContribution, tmgInfo.LoginId)
+		c2p := ContributionToPoints(todayContribution)
+		//fmt.Println("贡献值转换成积分 = ",c2p)
+		tmgInfo.LockedPoint += c2p
+		//fmt.Println(todayContribution)
+		// 释放
+		releasePer := GetEveryDayReleasePer(tmgInfo.RegisterDay)
+		releaseContribution = tmgInfo.LockedPoint * releasePer
+
+		tmgInfo.LockedPoint -= releaseContribution
+		tmgInfo.UsablePoint += releaseContribution * 0.8
+		tmgInfo.OldPoint += releaseContribution * 0.2
+
+		tmgInfo.CurrentContribution += todayContribution
+		tmgInfo.RegisterDay += 1
+		tmgInfo.LoginId = GetNextLoginId(tmgInfo.LoginId)
+	}
+	fmt.Printf("锁仓绩效积分 = %f\n" +
+		"可用绩效积分 = %f \n" +
+		"养老绩效积分 = %f \n" +
+		"注册天数 = %d \n" +
+		"当前贡献值 = %d " +
+		"每天释放值 = %f\n", tmgInfo.LockedPoint, tmgInfo.UsablePoint, tmgInfo.OldPoint, tmgInfo.RegisterDay,
+		tmgInfo.CurrentContribution, releaseContribution)
+}
+
+func GetBestLuckContribution(tmgInfo *TmgInfo) int32{
+	var contri int32
+	if tmgInfo.RegisterDay <= EndLuckDay {
+		i := 1
+		for i <= 100{
+			if tmgInfo.UsablePoint >= BestLuckyCostPoints {
+				tmgInfo.UsablePoint -= BestLuckyCostPoints
+				contri += BestLuckyContribution
+				i++
 			}
 		}
-		fmt.Fprintf(fileServer, "\n")
 	}
-
-	fmt.Println("不使用转盘抽奖 =====")
-	noUseBestLuck(CurContribution, LoginId, RegisterDay, LockedPoint, UsablePoint, OldPoint)
-	//fmt.Println("使用转盘抽奖 =====")
-	//useBestLuck(curContribution, loginId, regDay, lockedPoint, usedPoint, oldPoint)
+	return contri
 }
 
-func noUseBestLuck(curContribution, loginId, regDay int32, lockedPoint, usedPoint, oldPoint float32){
+func useBestLuck(tmgInfo *TmgInfo){
 	var releaseContribution float32
-	for regDay < OverDay{
-		// 今天获取的贡献值
-		todayContribution := GetEveryDayContribution(curContribution, loginId)
-		lockedPoint = lockedPoint + ContributionToPoints(todayContribution)
-		fmt.Println(todayContribution)
-		// 释放
-		releasePer := GetEveryDayReleasePer(regDay)
-		releaseContribution = lockedPoint * releasePer
-
-		lockedPoint = lockedPoint - releaseContribution
-		usedPoint = usedPoint + releaseContribution * 0.8
-		oldPoint = oldPoint + releaseContribution * 0.2
-
-		curContribution += todayContribution
-		regDay += 1
-		loginId = GetNextLoginId(loginId)
-	}
-	fmt.Printf("锁仓绩效积分 = %f\n" +
-		"可用绩效积分 = %f \n" +
-		"养老绩效积分 = %f \n" +
-		"注册天数 = %d \n" +
-		"当前贡献值 = %d " +
-		"每天释放值 = %f\n", lockedPoint, usedPoint, oldPoint, regDay, curContribution, releaseContribution)
-}
-
-func GetBestLuckContribution(regDay int32, usePoint float32) (float32, int32){
-	var contri int32
-	if regDay <= EndLuckDay {
-		for usePoint >= BestLuckyCostPoints {
-			usePoint -= BestLuckyCostPoints
-			contri += BestLuckyContribution
-		}
-	}
-	return usePoint, contri
-}
-
-func useBestLuck(curContribution, loginId, regDay int32, lockedPoint, usedPoint, oldPoint float32){
-	var releaseContribution float32
-	for regDay <= OverDay{
+	for tmgInfo.RegisterDay < OverDay{
 		// 先抽奖
-		var bestLock int32
-		usedPoint, bestLock = GetBestLuckContribution(regDay, usedPoint)
+
+		bestLock := GetBestLuckContribution(tmgInfo)
 		// 今天获取的贡献值
-		todayContribution := GetEveryDayContribution(curContribution, loginId) + bestLock
+		todayContribution := GetEveryDayContribution(tmgInfo.CurrentContribution, tmgInfo.LoginId) + bestLock
 
 
-		lockedPoint = lockedPoint + ContributionToPoints(todayContribution)
+		tmgInfo.LockedPoint += ContributionToPoints(todayContribution)
 		// 释放
-		releasePer := GetEveryDayReleasePer(regDay)
-		releaseContribution = lockedPoint * releasePer
+		releasePer := GetEveryDayReleasePer(tmgInfo.RegisterDay)
+		releaseContribution = tmgInfo.LockedPoint * releasePer
 
-		lockedPoint = lockedPoint - releaseContribution
-		usedPoint = usedPoint + releaseContribution * 0.8
-		oldPoint = oldPoint + releaseContribution * 0.2
+		tmgInfo.LockedPoint -= releaseContribution
+		tmgInfo.UsablePoint += releaseContribution * 0.8
+		tmgInfo.OldPoint += releaseContribution * 0.2
 
-		curContribution += todayContribution
-		regDay += 1
-		loginId = GetNextLoginId(loginId)
+		tmgInfo.CurrentContribution += todayContribution
+		tmgInfo.RegisterDay += 1
+		tmgInfo.LoginId = GetNextLoginId(tmgInfo.LoginId)
 	}
 	fmt.Printf("锁仓绩效积分 = %f\n" +
 		"可用绩效积分 = %f \n" +
 		"养老绩效积分 = %f \n" +
 		"注册天数 = %d \n" +
 		"当前贡献值 = %d " +
-		"每天释放值 = %f\n", lockedPoint, usedPoint, oldPoint, regDay, curContribution, releaseContribution)
+		"每天释放值 = %f\n", tmgInfo.LockedPoint, tmgInfo.UsablePoint, tmgInfo.OldPoint, tmgInfo.RegisterDay,
+		tmgInfo.CurrentContribution, releaseContribution)
 }
