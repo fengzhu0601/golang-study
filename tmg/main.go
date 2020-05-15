@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 const (
 	BestLuckyContribution = 3348	// 贡献值
@@ -159,6 +162,28 @@ func ContributionToPoints(contr int32) float32{
 }
 
 func main()  {
+	fileNameClient := "./tmg.csv"
+	os.Remove(fileNameClient)
+	fileClient, err := os.OpenFile(fileNameClient, os.O_CREATE|os.O_RDWR, os.ModePerm)
+	if err != nil {
+		panic("file not exsit! %!s(MISSING)")
+	}
+	defer fileClient.Close()
+
+	for _, areaId := range areaList {
+		birthGroupList := GenBirthPoint(areaId)
+		//l := RandBirthPointList(core, areaId, birthPointMap)
+		fmt.Fprintf(fileServer, "%d", areaId)
+		for _, birthGroup := range birthGroupList {
+			fmt.Fprintf(fileServer, "|%d,%d", birthGroup.GroupId, birthGroup.Circle)
+			for _, i := range birthGroup.Indexes {
+				fmt.Fprintf(fileClient, "%d,", i)
+				fmt.Fprintf(fileServer, ",%d", i)
+			}
+		}
+		fmt.Fprintf(fileServer, "\n")
+	}
+
 	fmt.Println("不使用转盘抽奖 =====")
 	noUseBestLuck(CurContribution, LoginId, RegisterDay, LockedPoint, UsablePoint, OldPoint)
 	//fmt.Println("使用转盘抽奖 =====")
