@@ -9,19 +9,35 @@ const (
 	perContribution int32 = 5
 	Contribution2Points = 2500     // 贡献值转换成积分的比例 2500：1
 
-	OverDay = 90			// 计算结束天数
+	OverDay = 77			// 计算结束天数
 	EndLuckDay = 90		// 结束抽奖天数
 )
+
+// 当前贡献值
+const CurContribution int32 = 437905
+// 登陆第几天
+const LoginId int32 = 7
+// 注册天数
+const RegisterDay = 76
+// 锁仓绩效积分
+const LockedPoint float32 = 187.85
+// 可用绩效积分
+const UsablePoint float32 = 0.52
+// 养老绩效积分
+const OldPoint float32 = 2.91
 
 // 每天能正常获取的贡献值
 func GetEveryDayContribution(curContr, loginId int32) (dayContr int32){
 	// 签到贡献
 	loginContr := GetLoginContribution(loginId)
+	fmt.Println("签到贡献 = ", loginContr)
 	// 阅读贡献
 	readContrPer := GetReadContributionPer(curContr)
-	readContr := readContrPer * 12 * perContribution
+	readContr := readContrPer * 12 * perContribution + perContribution*5*12*2
+	fmt.Println("阅读贡献 = ", readContr)
 	// 分享贡献
 	shareContr := perContribution*10+ perContribution*20
+	fmt.Println("分享贡献 = ", shareContr)
 
 	dayContr = loginContr + readContr + shareContr
 	return
@@ -143,25 +159,19 @@ func ContributionToPoints(contr int32) float32{
 }
 
 func main()  {
-	curContribution := int32(437905-154688)//int32(437905)
-	loginId := int32(5)//int32(6)
-	regDay	:= int32(74) // int32(75)	// 注册天数
-	lockedPoint := float32(105.19) // float32(175.6778 - 0.3514)
-	usedPoint := float32(10.87)//float32(0.22)
-	oldPoint := float32(2.83)
-
 	fmt.Println("不使用转盘抽奖 =====")
-	noUseBestLuck(curContribution, loginId, regDay, lockedPoint, usedPoint, oldPoint)
-	fmt.Println("使用转盘抽奖 =====")
-	useBestLuck(curContribution, loginId, regDay, lockedPoint, usedPoint, oldPoint)
+	noUseBestLuck(CurContribution, LoginId, RegisterDay, LockedPoint, UsablePoint, OldPoint)
+	//fmt.Println("使用转盘抽奖 =====")
+	//useBestLuck(curContribution, loginId, regDay, lockedPoint, usedPoint, oldPoint)
 }
 
 func noUseBestLuck(curContribution, loginId, regDay int32, lockedPoint, usedPoint, oldPoint float32){
 	var releaseContribution float32
-	for regDay <= OverDay{
+	for regDay < OverDay{
 		// 今天获取的贡献值
 		todayContribution := GetEveryDayContribution(curContribution, loginId)
 		lockedPoint = lockedPoint + ContributionToPoints(todayContribution)
+		fmt.Println(todayContribution)
 		// 释放
 		releasePer := GetEveryDayReleasePer(regDay)
 		releaseContribution = lockedPoint * releasePer
