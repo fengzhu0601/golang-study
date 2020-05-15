@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 const (
@@ -11,7 +12,7 @@ const (
 	perContribution int32 = 5
 	Contribution2Points = 2300     // 贡献值转换成积分的比例 2500：1
 
-	OverDay = 365			// 计算结束天数
+	OverDay = 365*2			// 计算结束天数
 	EndLuckDay = 75		// 结束抽奖天数
 )
 
@@ -50,24 +51,23 @@ func CreateTmgInfo() *TmgInfo{
 }
 
 // 每天能正常获取的贡献值
-func GetEveryDayContribution(curContr, loginId int32) (dayContr int32){
+func GetEveryDayContribution(curContr, loginId int32, file *os.File) (dayContr int32){
 	// 签到贡献
 	loginContr := GetLoginContribution(loginId)
-	//fmt.Println("签到贡献 = ", loginContr)
+	fmt.Fprintf(file, "%d,", loginContr)
 	// 阅读贡献
 	readContrPer := GetReadContributionPer(curContr)
-	//fmt.Println("倍数 = ",readContrPer)
 	readContr := readContrPer * 12 * perContribution + perContribution*12
-	//fmt.Println("阅读贡献 = ", readContr)
+	fmt.Fprintf(file, "%d,%d,", readContrPer, readContr)
 	// 分享贡献
 	shareContr := perContribution*10
-	//fmt.Println("分享贡献 = ", shareContr)
+	fmt.Fprintf(file, "%d,", shareContr)
 	// 广告贡献值
 	adContr := 32*perContribution
-	//fmt.Println("广告贡献 = ", adContr)
+	fmt.Fprintf(file, "%d,", adContr)
 
 
-	dayContr = loginContr + readContr + shareContr+adContr
+	dayContr = loginContr + readContr + shareContr + adContr
 	return
 }
 
@@ -188,14 +188,8 @@ func ContributionToPoints(contr int32) float32{
 
 func main()  {
 
-	//fileNameClient := "./tmg.csv"
-	//os.Remove(fileNameClient)
-	//fileClient, err := os.OpenFile(fileNameClient, os.O_CREATE|os.O_RDWR, os.ModePerm)
-	//if err != nil {
-	//	panic("file not exsit! %!s(MISSING)")
-	//}
-	//defer fileClient.Close()
-	//
+
+
 	//for _, areaId := range areaList {
 	//	birthGroupList := GenBirthPoint(areaId)
 	//	//l := RandBirthPointList(core, areaId, birthPointMap)
@@ -213,29 +207,46 @@ func main()  {
 	fmt.Println("不使用转盘抽奖 =====")
 	noUseBestLuck(tmgInfo)
 
-	tmgInfo2 := CreateTmgInfo()
-	fmt.Println("使用转盘抽奖 =====")
-	useBestLuck(tmgInfo2)
+	//tmgInfo2 := CreateTmgInfo()
+	//fmt.Println("使用转盘抽奖 =====")
+	//useBestLuck(tmgInfo2)
 }
 
 func noUseBestLuck(tmgInfo *TmgInfo){
+	fileNameNoUse := "./tmg1.csv"
+	os.Remove(fileNameNoUse)
+	fileNoUse, err := os.OpenFile(fileNameNoUse, os.O_CREATE|os.O_RDWR, os.ModePerm)
+	if err != nil {
+		panic("file not exsit! %!s(MISSING)")
+	}
+	defer fileNoUse.Close()
+
+	fmt.Fprintf(fileNoUse, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		"注册天数","登陆第几天","签到贡献值","阅读倍数","阅读贡献值","分享贡献值","广告贡献值","今日获取的总贡献值",
+		"转换比","贡献值转换成积分","释放比","释放积分","锁仓绩效积分","可用绩效积分","养老绩效积分","累计贡献值")
+
 	var releaseContribution float32
-	for tmgInfo.RegisterDay < OverDay{
+	for tmgInfo.RegisterDay <= OverDay{
+		fmt.Fprintf(fileNoUse, "%d,%d,", tmgInfo.RegisterDay,tmgInfo.LoginId)
 		// 今天获取的贡献值
-		todayContribution := GetEveryDayContribution(tmgInfo.CurrentContribution, tmgInfo.LoginId)
+		todayContribution := GetEveryDayContribution(tmgInfo.CurrentContribution, tmgInfo.LoginId, fileNoUse)
 		c2p := ContributionToPoints(todayContribution)
+		fmt.Fprintf(fileNoUse, "%d,%d,%f,", todayContribution,Contribution2Points,c2p)
 		//fmt.Println("贡献值转换成积分 = ",c2p)
 		tmgInfo.LockedPoint += c2p
 		//fmt.Println(todayContribution)
 		// 释放
 		releasePer := GetEveryDayReleasePer(tmgInfo.RegisterDay)
 		releaseContribution = tmgInfo.LockedPoint * releasePer
+		fmt.Fprintf(fileNoUse, "%f,%f,", releasePer, releaseContribution)
 
 		tmgInfo.LockedPoint -= releaseContribution
 		tmgInfo.UsablePoint += releaseContribution * 0.8
 		tmgInfo.OldPoint += releaseContribution * 0.2
+		fmt.Fprintf(fileNoUse, "%f,%f,%f,", tmgInfo.LockedPoint, tmgInfo.UsablePoint, tmgInfo.OldPoint)
 
 		tmgInfo.CurrentContribution += todayContribution
+		fmt.Fprintf(fileNoUse, "%d\n", tmgInfo.CurrentContribution)
 		tmgInfo.RegisterDay += 1
 		tmgInfo.LoginId = GetNextLoginId(tmgInfo.LoginId)
 	}
@@ -244,7 +255,7 @@ func noUseBestLuck(tmgInfo *TmgInfo){
 		"养老绩效积分 = %f \n" +
 		"注册天数 = %d \n" +
 		"当前贡献值 = %d " +
-		"每天释放值 = %f\n", tmgInfo.LockedPoint, tmgInfo.UsablePoint, tmgInfo.OldPoint, tmgInfo.RegisterDay,
+		"每天释放值 = %f\n", tmgInfo.LockedPoint, tmgInfo.UsablePoint, tmgInfo.OldPoint, tmgInfo.RegisterDay-1,
 		tmgInfo.CurrentContribution, releaseContribution)
 }
 
@@ -263,14 +274,14 @@ func GetBestLuckContribution(tmgInfo *TmgInfo) int32{
 	return contri
 }
 
-func useBestLuck(tmgInfo *TmgInfo){
+func useBestLuck(tmgInfo *TmgInfo, file *os.File){
 	var releaseContribution float32
 	for tmgInfo.RegisterDay < OverDay{
 		// 先抽奖
 
 		bestLock := GetBestLuckContribution(tmgInfo)
 		// 今天获取的贡献值
-		todayContribution := GetEveryDayContribution(tmgInfo.CurrentContribution, tmgInfo.LoginId) + bestLock
+		todayContribution := GetEveryDayContribution(tmgInfo.CurrentContribution, tmgInfo.LoginId,file) + bestLock
 
 
 		tmgInfo.LockedPoint += ContributionToPoints(todayContribution)
