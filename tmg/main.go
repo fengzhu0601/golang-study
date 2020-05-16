@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 const (
@@ -10,9 +11,9 @@ const (
 	BestLuckyCostPoints = 0.3		// 积分
 
 	perContribution int32 = 5
-	Contribution2Points = 2300     // 贡献值转换成积分的比例 2500：1
+	Contribution2Points float32 = 2190.18     // 贡献值转换成积分的比例 2500：1
 
-	OverDay = 365*2			// 计算结束天数
+	OverDay = 365			// 计算结束天数
 	EndLuckDay = 75		// 结束抽奖天数
 )
 
@@ -31,8 +32,9 @@ const OldPoint float32 = 2.91
 
 
 type  TmgInfo struct {
+	Date time.Time	// 日期
 	CurrentContribution int32	//当前贡献值
-	LoginId				int32	// 登陆第几天
+	LoginId				int32	// 签到第几天
 	RegisterDay 		int32	// 注册天数
 	LockedPoint 		float32 // 锁仓绩效积分
 	UsablePoint 		float32 // 可用绩效积分
@@ -40,14 +42,16 @@ type  TmgInfo struct {
 }
 
 func CreateTmgInfo() *TmgInfo{
-	return &TmgInfo{
-		CurrentContribution:CurContribution,
-		LoginId:LoginId,
-		RegisterDay:RegisterDay,
-		LockedPoint:LockedPoint,
-		UsablePoint:UsablePoint,
-		OldPoint:OldPoint,
+	tmgInfo := &TmgInfo{
+		Date :	time.Date(2020, 5, 15, 0, 0, 0, 0, time.UTC),
+		CurrentContribution:437905,
+		LoginId:7,
+		RegisterDay:76,
+		LockedPoint:187.85,
+		UsablePoint:0.52,
+		OldPoint:2.91,
 	}
+	return tmgInfo
 }
 
 // 每天能正常获取的贡献值
@@ -220,18 +224,24 @@ func noUseBestLuck(tmgInfo *TmgInfo){
 		panic("file not exsit! %!s(MISSING)")
 	}
 	defer fileNoUse.Close()
+	fmt.Fprintf(fileNoUse, "%s,%s,%s,%s,%s,%s,%s\n", "日期","注册天数","签到第几天","锁仓绩效积分","可用绩效积分","养老绩效积分", "当前累计贡献值" )
+	fmt.Fprintf(fileNoUse, "%d年%d月%d日,", tmgInfo.Date.Year(), tmgInfo.Date.Month(), tmgInfo.Date.Day())
+	fmt.Fprintf(fileNoUse, "%d, %d, %f,%f,%f,%d\n", tmgInfo.RegisterDay, tmgInfo.LoginId, tmgInfo.LockedPoint, tmgInfo.UsablePoint,
+		tmgInfo.OldPoint, tmgInfo.CurrentContribution)
 
-	fmt.Fprintf(fileNoUse, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-		"注册天数","登陆第几天","签到贡献值","阅读倍数","阅读贡献值","分享贡献值","广告贡献值","今日获取的总贡献值",
+	fmt.Fprintf(fileNoUse, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		"日期","注册天数","登陆第几天","签到贡献值","阅读倍数","阅读贡献值","分享贡献值","广告贡献值","今日获取的总贡献值",
 		"转换比","贡献值转换成积分","释放比","释放积分","锁仓绩效积分","可用绩效积分","养老绩效积分","累计贡献值")
 
 	var releaseContribution float32
 	for tmgInfo.RegisterDay <= OverDay{
+		tmgInfo.Date = tmgInfo.Date.AddDate(0,0, 1)
+		fmt.Fprintf(fileNoUse, "%d年%d月%d日,", tmgInfo.Date.Year(), tmgInfo.Date.Month(), tmgInfo.Date.Day())
 		fmt.Fprintf(fileNoUse, "%d,%d,", tmgInfo.RegisterDay,tmgInfo.LoginId)
 		// 今天获取的贡献值
 		todayContribution := GetEveryDayContribution(tmgInfo.CurrentContribution, tmgInfo.LoginId, fileNoUse)
 		c2p := ContributionToPoints(todayContribution)
-		fmt.Fprintf(fileNoUse, "%d,%d,%f,", todayContribution,Contribution2Points,c2p)
+		fmt.Fprintf(fileNoUse, "%d,%f,%f,", todayContribution,Contribution2Points,c2p)
 		//fmt.Println("贡献值转换成积分 = ",c2p)
 		tmgInfo.LockedPoint += c2p
 		//fmt.Println(todayContribution)
