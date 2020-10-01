@@ -1,0 +1,51 @@
+package main
+
+import "fmt"
+
+func Print(type A) (s []A) {
+	for _, v := range s{
+		fmt.Print(v)
+	}
+	fmt.Println()
+}
+
+type aa struct {
+	a int32
+	b float64
+}
+
+
+type Stringer interface {
+	String() string
+}
+
+func Stringify(type T Stringer)(s []T)(ret []string){
+	for _, v := range s {
+		ret = append(ret, v.String())
+	}
+	return ret
+}
+
+type sa struct{
+	name string
+}
+type b struct {}
+func (a sa)String() string{
+	return a.name
+}
+
+func main(){
+	Print([]string{"hello, ", "world\n"})
+	Print([]int32{1,2})
+	Print([]float64{1.1,2.2})
+
+	aaList := make([]aa, 0, 2)
+	aaList = append(aaList, aa{1, 1.1})
+	aaList = append(aaList, aa{2, 2.2})
+	aaList = append(aaList, aa{5, 5.5})
+	Print(aaList)
+
+	ret := Stringify(sa)([]sa{{"fengzhu1"},{"fengzhu2"}})
+	Print(ret)
+
+}

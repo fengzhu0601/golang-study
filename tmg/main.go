@@ -11,9 +11,9 @@ const (
 	BestLuckyCostPoints = 0.3		// 积分
 
 	perContribution int32 = 5
-	Contribution2Points float32 = 2190.18     // 贡献值转换成积分的比例 2500：1
+	Contribution2Points float32 = 5190.18     // 贡献值转换成积分的比例 2500：1
 
-	OverDay = 365			// 计算结束天数
+	OverDay = 365*2			// 计算结束天数
 	EndLuckDay = 75		// 结束抽奖天数
 )
 

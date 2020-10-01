@@ -1,0 +1,26 @@
+package main
+
+import "fmt"
+
+// 类型约束
+type NumberString interface {
+	type int, int8, string
+}
+
+type Monoid(type A) interface{
+	Combine(x A, y A) A
+}
+
+type Concat(type A NumberString) struct{}
+
+func(c Concat(A)) Combine(x A, y A) A{
+	return x+ y
+}
+
+func main() {
+	c := Concat(int){}
+	fmt.Println(c.Combine(1,2))
+
+	c2 := Concat(string){}
+	fmt.Println(c2.Combine("hello ", "world!"))
+}
